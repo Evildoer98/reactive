@@ -594,8 +594,65 @@ View = reactive(UserEvent | Timer | Remote API)
 
 #### fromPromise
 ```ts
-  public static fromPromise(promise: PromiseLike
+  public static fromPromise(promise: PromiseLike<T>, scheduler: Scheduler): Observable<T>
 ```
+* 将 promise 转换成 Observable，在编写时不用 .then、catch 之类的链式调用
+* 如果 Promise resolves 一个值，输入 Observable 发出这个值然后完成；如果 Promise 被 rejectd，输出 Observable 会发出相应的错误
+  ```js
+    const source = Rx.Observable.fromPromise(fetch('http://xxxx'))
+    source.subscribe(x => console.log(x), e => console.error(e))
+  ```
+
+#### interval
+```ts
+  public static interval(period: number, scheduler: Scheduler): Observable
+```
+* 使用该操作符创建的 Observable 可以在指定时间内发出连续的数字，和 setInterval 这种模式差不多。
+* 在需要获取一段连续的数字时，或者需要定时做一些操作时都可以使用该操作符实现需求
+  ```js
+    const source = Rx.Observable.interval(1000)
+    source.subscribe(v => console.log(v))
+    // 默认从 0 开始，设定时间为 1s 一次，持续不断的按照指定间隔发送数据。可以结合 take 操作符进行限制发出的数据量
+  ```
+
+#### of
+```ts
+  public static of(values: ...T, scheduler: Scheduler)
+```
+* 和 from 能力差不多，在使用的时候是传入一个一个参数来调用的，类似 js 中 concat 方法。同样返回一个 Observable，依次将传入的参数合并并将数据以同步的方式发出
+  ```js
+    const source = Rx.Observable.of(1, 2, 3)
+    source.subscribe(v => console.log(v))
+    // 1
+    // 2
+    // 3
+  ```
+
+#### repeat
+```ts
+  public repeat(count: number): Observable
+```
+* 将数据源重复 n 次，n为传入的数字类型参数
+  ```js
+    const source = Rx.Observable.of(1, 2, 3).repeat(3)
+    source.subscribe(v => console.log(v))
+    // 1 2 3 
+    // 1 2 3 
+    // 1 2 3
+    // 若不使用 of 这一次性打印出 // 1 2 3 1 2 3 1 2 3
+  ```
+
+#### range
+```ts
+  public static range(start: number, count: number, scheduler: Scheduler): Observable
+```
+* 创建一个 Observable，发出指定范围内的数字序列
+```js
+  const source = Rx.Observable.range(1, 4)
+  source.subscribe(v => console.log(v))
+  // 1 2 3 4
+```
+
 
 ## 两种合流方式
 1. merge 合流
