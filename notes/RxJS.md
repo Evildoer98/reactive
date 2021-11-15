@@ -653,6 +653,119 @@ View = reactive(UserEvent | Timer | Remote API)
   // 1 2 3 4
 ```
 
+### 转换操作符
+#### buffer
+```ts
+  public buffer(closingNotifier: Observable<any>): Observable
+```
+* 将过往的值收集到一个数组中，并且仅当另外一个 Observable 发出通知时才发出此数组。这相当于有yi个缓冲区，将数据收集起来，等到一个信号来临，再释放出去
+* eg: 当数据量达到特定值再控制进行操作
+  ```js
+    const btn = document.createElement('button')
+    btn.innerText = '点我啊'
+    document.body.appendChild(btn)
+    const click = Rx.Observable.fromEvent(btn, 'click')
+    const interval = Rx.Observable.interval(1000)
+    const source = interval.buffer(click)
+    source.subscribe(x => console.log(x))
+    // 等待四秒后，点击按钮，点击[0, 1, 2, 3]
+    // 再等待八秒后，点击按钮 [4, 5, 6, 7, 8, 9, 10, 11]
+    // 通过按钮来控制数据的发送。发出的数据就会直接会在缓存区中被清空，然后重新收集新的数据
+  ```
+
+#### concatMap
+```ts
+  public concatMap(project: function(value: T, ?index:number): ObservableInput, resultSelector: function(outerValue: T, innerValue: I, outerIndex: number, innerIndex: number): any):Observable
+```
+* 将源值投射为一个合并到输出 Observable 的 Observable,以串行的方式等待前一个完成再合并下一个 Observable
+* 功能类似工厂流水线
+* 注意:
+  1. 源值发送一个数据，然后传入的内部 Observable 就会开始工作或者是发送数据，订阅者就能收到数据了，内部的 Observable 相当于总是要等源对象发送一个数据才会进行新一轮的工作，并且要等本轮工作完成了才能继续下一轮
+  2. 如果本轮工作还未完成又接收到源对象发送的数据，那么就会用一个队列保存，然后等本轮完成立即检查队列里是否还有，如果有则立马开启下一轮
+  3. 如果内部 Observable 的工作时间大于源对象发送的数据的间隔时间，那么就会导致缓存队列越来越大，最后造成性能问题
+* eg:
+  ```js
+    const source = Rx.Observable.interval(3000)
+    const result = source.concatMap(val => Rx.Observable.interval(1000).take(2))
+    result.subscribe(x => console(x))
+    // 第三秒 source 发送第一个数据，传入内部 Observable，经过两秒发送两个递增的数，订阅函数打印这两个数，继续等待一秒，第六秒重复上述
+  ```
+
+#### map
+```ts
+  public map(project: function(value: T, index: number): R, thisArg: any): Observable<R>
+```
+```js
+  const source = Rx.Observable.interval(1000).take(3);
+  const result = source.map(x => x * 2);
+  result.subscribe(x => console.log(x));
+  // 0 2 4
+```
+
+#### mapTo
+```ts
+  public mapTo(value: any): Observable
+```
+* 忽略数据源发送的数据，只发送指定的值(传参)
+```js
+  const source = Rx.Observable.interval(1000).take(3)
+  const result = source.mapTo(111)
+  result.subscribe(x => console.log(x))
+  // 666 666 666
+```
+
+#### mergeMap
+```ts
+  public mergeMap(project: function(value: T, ?index: number): ObservableInput, resultSelector: function(outerValue: T, innerValue: I, outerIndex: number, innerIndex: number): any, concurrent: number): Observable
+```
+* mergeMap返回值是要求是一个Observable，可以返回任意转换或具备其他能力的Observable
+```js
+  const source = Rx.Observable.interval(1000).take(3)
+  const result = source.mergeMap(x => x % 2 === 0 ? Rx.Observable.of(x) : Rx.Observable.empty())
+  // 0 2
+```
+
+#### pluck
+```ts
+  public pluck(properties: ...string): Observable
+```
+* 用于选择出每个数据对象上的指定属性值
+* eg: 若数据源发送的数据是一个对象，对象上有一个 name 属性，并订阅者指向知道这个 name 属性，那么使用该操作符来提取该属性值给用户
+  ```js
+    const source = Rx.Observable.of({name: '张三'}, {name: '李四'})
+    const result = source.pluck('name')
+    result.subscribe(x => console.log(x))
+    // 张三
+    // 李四
+  ```
+
+#### scan
+```ts
+  public scan(accumulator: function(acc: R, value: T, index: number): R, seed: T | R): Observable<R>
+```
+* 累加器操作符，用来做状态管理
+* eg: 将数据源发送过来的数据累加之后再返回给订阅者
+  ```js
+    const source = Rx.Observable.interval(1000).take(4)
+    const result = source.scan((acc, cur) => acc + cur, 0)
+    result.subscribe(x => console.log(x))
+    // 0 1 3 6
+  ```
+
+#### switchMap
+```ts
+  public switchMap(project: function(value: T, ?index: number): ObservableInput, resultSelector: function(outerValue: T, innerValue: I, outerIndex: number, innerIndex: number): any): Observable
+```
+* eg: 同学一点完之后，第二秒同学二点击了一下按钮，则打印结果：0、1、0、1、2，这里从第二个0开始就是同学二发送的数据了。
+```js
+  const btn = document.createElement('button');
+  btn.innerText = '我要发言！'
+  document.body.appendChild(btn);
+  const source = Rx.Observable.fromEvent(btn, 'click');
+  const result = source.switchMap(x => Rx.Observable.interval(1000).take(3));
+  result.subscribe(x => console.log(x));
+```
+
 
 ## 两种合流方式
 1. merge 合流
