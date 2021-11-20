@@ -766,6 +766,11 @@ View = reactive(UserEvent | Timer | Remote API)
   result.subscribe(x => console.log(x));
 ```
 
+### 过滤操作符
+#### debounceTime
+```ts
+  public debounceTime(dueTime: number, scheduler: Scheduler): Observable
+```
 
 ## 两种合流方式
 1. merge 合流
